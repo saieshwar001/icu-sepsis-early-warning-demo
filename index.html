@@ -67,6 +67,15 @@
               <div class="threshold-box"><span>PROJECT CUTOFF</span><strong id="threshold-value">—</strong><small>selected on validation data</small></div>
             </div>
             <div class="mini-stats"><div><span>Hourly rows</span><strong id="hour-count">—</strong></div><div><span>Rows above cutoff</span><strong id="alert-count">—</strong></div><div><span>Patient file</span><strong id="patient-name">—</strong></div></div>
+            <figure class="chart-card">
+              <div class="chart-heading"><div><h4>Scores across the file</h4><p>One point for each hour in sequence</p></div><div class="chart-legend"><span><i class="legend-score"></i>Model score</span><span><i class="legend-cutoff"></i>Project cutoff</span></div></div>
+              <svg id="score-chart" class="score-chart" viewBox="0 0 760 220" role="img" aria-labelledby="score-chart-title score-chart-desc">
+                <title id="score-chart-title">Hourly model scores</title>
+                <desc id="score-chart-desc">The chart will show each hourly model score and the project cutoff.</desc>
+              </svg>
+              <p id="chart-description" class="chart-description" aria-live="polite"></p>
+            </figure>
+            <p id="result-summary" class="result-summary" aria-live="polite"></p>
             <div class="table-heading"><div><h4>Recent hourly scores</h4><span id="table-caption">—</span></div><span class="dataset-tag">DATASET LABEL IS RETROSPECTIVE</span></div>
             <div class="table-wrap">
               <table>

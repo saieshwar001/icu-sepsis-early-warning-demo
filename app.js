@@ -98,6 +98,8 @@ function showResults(records, fileName) {
   $("#hour-count").textContent = scored.length.toLocaleString();
   $("#alert-count").textContent = above.toLocaleString();
   $("#patient-name").textContent = fileName;
+  renderChart(scored);
+  $("#result-summary").textContent = `The highest score was ${max.score.toFixed(3)} at hour ${max.hour}. It is ${max.score >= model.threshold ? "at or above" : "below"} the project's research cutoff of ${model.threshold.toFixed(3)}; ${above} of ${scored.length} hourly rows meet or exceed that cutoff. This is an educational model output, not a clinical risk estimate.`;
   $("#table-caption").textContent = `Showing the latest ${Math.min(24, scored.length)} of ${scored.length.toLocaleString()} rows`;
   const body = $("#score-rows");
   body.replaceChildren();
@@ -110,6 +112,48 @@ function showResults(records, fileName) {
     body.appendChild(tr);
   });
   message.textContent = `Scored ${scored.length.toLocaleString()} hourly rows. Model cutoff: ${model.threshold.toFixed(3)}.`;
+}
+
+function renderChart(scored) {
+  const svg = $("#score-chart");
+  const ns = "http://www.w3.org/2000/svg";
+  const width = 760, height = 220;
+  const margin = { top: 12, right: 18, bottom: 32, left: 52 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const maxValue = Math.max(model.threshold * 1.2, ...scored.map((row) => row.score), 0.05);
+  const y = (value) => margin.top + plotHeight * (1 - value / maxValue);
+  const x = (index) => margin.left + (scored.length === 1 ? plotWidth / 2 : (index / (scored.length - 1)) * plotWidth);
+  const make = (tag, attrs, text) => {
+    const element = document.createElementNS(ns, tag);
+    Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, String(value)));
+    if (text != null) element.textContent = text;
+    return element;
+  };
+  svg.replaceChildren();
+  svg.append(make("title", { id: "score-chart-title" }, "Hourly model scores and project cutoff"));
+  svg.append(make("desc", { id: "score-chart-desc" }, `${scored.length} hourly model scores plotted by file sequence. The dashed line marks the project cutoff of ${model.threshold.toFixed(3)}.`));
+  for (let tick = 0; tick <= 4; tick += 1) {
+    const value = maxValue * tick / 4;
+    const yy = y(value);
+    svg.append(make("line", { x1: margin.left, y1: yy, x2: width - margin.right, y2: yy, stroke: "#e8eeee", "stroke-width": 1 }));
+    svg.append(make("text", { x: margin.left - 9, y: yy + 3, "text-anchor": "end", fill: "#87969a", "font-size": 9 }, value.toFixed(2)));
+  }
+  const cutoffY = y(model.threshold);
+  svg.append(make("line", { x1: margin.left, y1: cutoffY, x2: width - margin.right, y2: cutoffY, stroke: "#c2843e", "stroke-width": 1.5, "stroke-dasharray": "5 4" }));
+  svg.append(make("text", { x: width - margin.right - 2, y: cutoffY - 5, "text-anchor": "end", fill: "#9b6121", "font-size": 9 }, `Cutoff ${model.threshold.toFixed(3)}`));
+  svg.append(make("line", { x1: margin.left, y1: margin.top, x2: margin.left, y2: height - margin.bottom, stroke: "#dce5e4", "stroke-width": 1 }));
+  svg.append(make("line", { x1: margin.left, y1: height - margin.bottom, x2: width - margin.right, y2: height - margin.bottom, stroke: "#dce5e4", "stroke-width": 1 }));
+  const points = scored.map((row, index) => `${x(index)},${y(row.score)}`).join(" ");
+  svg.append(make("polyline", { points, fill: "none", stroke: "#127d78", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  const step = Math.max(1, Math.ceil(scored.length / 120));
+  scored.forEach((row, index) => {
+    if (index % step !== 0 && index !== scored.length - 1) return;
+    svg.append(make("circle", { cx: x(index), cy: y(row.score), r: scored.length > 120 ? 2 : 3, fill: row.score >= model.threshold ? "#c2843e" : "#127d78", stroke: "white", "stroke-width": 1 }));
+  });
+  const ticks = [...new Set([0, Math.floor((scored.length - 1) / 2), scored.length - 1])];
+  ticks.forEach((index) => svg.append(make("text", { x: x(index), y: height - 10, "text-anchor": index === 0 ? "start" : index === scored.length - 1 ? "end" : "middle", fill: "#87969a", "font-size": 9 }, `Hour ${scored[index].hour}`)));
+  $("#chart-description").textContent = `Y-axis: model score. X-axis: hour in the file. Orange points meet or exceed the project cutoff.`;
 }
 
 function escapeHtml(value) {
